@@ -200,16 +200,18 @@
 
     let liveData = { passes: {}, blocks: {}, adjustments: {}, history: {} };
 
-    // Real-time listener: instantly syncs across devices
+    // SAFE-SYNC LISTENER: Prevents mid-day resets by ignoring empty/null payloads
     onValue(stateRef, (snapshot) => {
       const data = snapshot.val();
-      liveData = {
-        passes: (data && data.passes) || {},
-        blocks: (data && data.blocks) || {},
-        adjustments: (data && data.adjustments) || {},
-        history: (data && data.history) || {}
-      };
-      renderUI();
+      if (data) {
+        liveData = {
+          passes: data.passes || liveData.passes || {},
+          blocks: data.blocks || liveData.blocks || {},
+          adjustments: data.adjustments || liveData.adjustments || {},
+          history: data.history || liveData.history || {}
+        };
+        renderUI();
+      }
     });
 
     function saveToCloud() {
@@ -459,7 +461,7 @@
 
         const passCountKey = `${formattedTeacher}_${s.name}`;
         const basePasses = 5;
-        const currentPasses = (liveData.adjustments || {})[passCountKey] !== undefined ? liveData.adjustments[passCountKey] : basePasses;
+        const currentPasses = (liveData.adjustments || {})[passCountKey] !== undefined ? liveData.adjustments[passKey] : basePasses;
 
         return `
           <tr class="hover:bg-slate-50">
