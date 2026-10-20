@@ -541,6 +541,9 @@
     // Event Delegation Handlers
     document.getElementById("teacherSelect").addEventListener("change", (e) => {
       currentTeacher = e.target.value;
+      // Clear search box on teacher change so new roster displays properly
+      const searchInput = document.getElementById("searchRoster");
+      if (searchInput) searchInput.value = "";
       renderRoster();
     });
 
