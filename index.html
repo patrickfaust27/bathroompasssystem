@@ -439,7 +439,6 @@
         roster = roster.filter(s => Number(s.period) === Number(selectedPeriod));
       }
 
-      // Robust search logic matching "First Last" or "Last, First"
       if (search) {
         roster = roster.filter(s => {
           const rawName = s.name.toLowerCase();
@@ -453,10 +452,12 @@
         return;
       }
 
-      const activeOutNames = Object.values(liveData.passes || {}).map(p => p.student);
+      const activePassesList = Object.values(liveData.passes || {});
+      const activeOutNames = activePassesList.map(p => p.student);
 
       tbody.innerHTML = roster.map(s => {
-        const isOut = activeOutNames.includes(s.name);
+        // FIX: Match BOTH student name AND period so Period 1 is not affected when Period 6 signs out
+        const isOut = activePassesList.some(p => p.student === s.name && Number(p.period) === Number(s.period));
         
         let blockedBy = null;
         Object.values(liveData.blocks || {}).forEach(b => {
@@ -464,7 +465,6 @@
           if (b.studentB === s.name && activeOutNames.includes(b.studentA)) blockedBy = b.studentA;
         });
 
-        // FIXED: Key includes period so each class gets 5 separate passes
         const passKey = `${formattedTeacher}_P${s.period}_${s.name}`;
         const basePasses = 5;
         const currentPasses = (liveData.adjustments || {})[passKey] !== undefined ? liveData.adjustments[passKey] : basePasses;
@@ -542,7 +542,6 @@
     // Event Delegation Handlers
     document.getElementById("teacherSelect").addEventListener("change", (e) => {
       currentTeacher = e.target.value;
-      // Clear search box on teacher change so new roster displays properly
       const searchInput = document.getElementById("searchRoster");
       if (searchInput) searchInput.value = "";
       renderRoster();
@@ -613,7 +612,6 @@
       const studentName = btn.dataset.student;
       const period = btn.dataset.period;
       const formattedTeacher = currentTeacher.charAt(0).toUpperCase() + currentTeacher.slice(1).toLowerCase();
-      // FIXED: Key includes period so signing out in Period 6 won't touch Period 1 count
       const passKey = `${formattedTeacher}_P${period}_${studentName}`;
 
       if (action === "sign-out") {
