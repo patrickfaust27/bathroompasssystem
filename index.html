@@ -456,7 +456,7 @@
       const activeOutNames = activePassesList.map(p => p.student);
 
       tbody.innerHTML = roster.map(s => {
-        // FIX: Match BOTH student name AND period so Period 1 is not affected when Period 6 signs out
+        // MATCH student AND period explicitly
         const isOut = activePassesList.some(p => p.student === s.name && Number(p.period) === Number(s.period));
         
         let blockedBy = null;
@@ -610,7 +610,7 @@
 
       const action = btn.dataset.action;
       const studentName = btn.dataset.student;
-      const period = btn.dataset.period;
+      const period = Number(btn.dataset.period); // Explicit number conversion
       const formattedTeacher = currentTeacher.charAt(0).toUpperCase() + currentTeacher.slice(1).toLowerCase();
       const passKey = `${formattedTeacher}_P${period}_${studentName}`;
 
@@ -624,10 +624,12 @@
 
         const passId = "pass_" + Date.now();
         if (!liveData.passes) liveData.passes = {};
+        
+        // SAVE PERIOD EXPLICITLY TO FIREBASE
         liveData.passes[passId] = {
           student: studentName,
           teacher: formattedTeacher,
-          period: parseInt(period, 10),
+          period: period,
           time: Date.now()
         };
 
