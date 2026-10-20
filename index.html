@@ -464,7 +464,8 @@
           if (b.studentB === s.name && activeOutNames.includes(b.studentA)) blockedBy = b.studentA;
         });
 
-        const passKey = `${formattedTeacher}_${s.name}`;
+        // FIXED: Key includes period so each class gets 5 separate passes
+        const passKey = `${formattedTeacher}_P${s.period}_${s.name}`;
         const basePasses = 5;
         const currentPasses = (liveData.adjustments || {})[passKey] !== undefined ? liveData.adjustments[passKey] : basePasses;
 
@@ -475,7 +476,7 @@
             <td class="py-3 px-3 text-center">
               <div class="flex items-center justify-center gap-2">
                 <span class="font-bold text-sm min-w-[20px]">${currentPasses}</span>
-                <button data-action="add-pass" data-student="${s.name}" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-xs px-2 py-1 rounded transition cursor-pointer" title="Award 1 Pass Back">+ Add Pass</button>
+                <button data-action="add-pass" data-student="${s.name}" data-period="${s.period}" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-xs px-2 py-1 rounded transition cursor-pointer" title="Award 1 Pass Back">+ Add Pass</button>
               </div>
             </td>
             <td class="py-3 px-3 text-right">
@@ -612,13 +613,14 @@
       const studentName = btn.dataset.student;
       const period = btn.dataset.period;
       const formattedTeacher = currentTeacher.charAt(0).toUpperCase() + currentTeacher.slice(1).toLowerCase();
-      const passKey = `${formattedTeacher}_${studentName}`;
+      // FIXED: Key includes period so signing out in Period 6 won't touch Period 1 count
+      const passKey = `${formattedTeacher}_P${period}_${studentName}`;
 
       if (action === "sign-out") {
         const currentPasses = (liveData.adjustments || {})[passKey] !== undefined ? liveData.adjustments[passKey] : 5;
 
         if (currentPasses <= 0) {
-          alert(`${studentName} has no bathroom passes remaining!`);
+          alert(`${studentName} has no bathroom passes remaining for Period ${period}!`);
           return;
         }
 
