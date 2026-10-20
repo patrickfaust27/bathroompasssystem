@@ -100,7 +100,7 @@
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
               <h2 class="text-xl font-bold text-slate-800">Classroom Roster</h2>
-              <p id="rosterSubtitle" class="text-xs text-slate-500">Filter by period to manage passes.</p>
+              <p id="rosterSubtitle" class="text-xs text-slate-500">Filter by period or search by name.</p>
             </div>
 
             <div class="flex items-center gap-3 flex-wrap">
@@ -115,7 +115,7 @@
                 <option value="6">Period 6</option>
               </select>
 
-              <input type="text" id="searchRoster" placeholder="Search name..." class="text-sm p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none w-36 sm:w-48">
+              <input type="text" id="searchRoster" placeholder="Search student name..." class="text-sm p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none w-44 sm:w-56">
             </div>
           </div>
 
@@ -245,7 +245,7 @@
         [2, "Bliesmer, Dawson", "Brown, Joslyn", "Burgin, Abigail", "Cardon, Leah", "Chavez, Brady", "Dragomir, Leonard", "Fitzsimmons, George", "Gladu, Judith", "Golden, Bella", "Gutierrez, Vida", "Hazen, Brooke", "Johnson, Julia", "Knox, Kash", "Ko, Zu", "Lopez, Kara", "Mehreteab, Delina", "Merto, Brandon", "Miedema, Jackson", "Randall, Mason", "Rollin, Lily", "Salamea, Jordi", "Schlender, Cayleigh", "Smith, Melanie", "Steinke, Stella", "Taylor, Allie", "Wair, Quinn", "West, Madalyn"],
         [3, "Barrow, Amos", "Bautista, Kensington", "Bird, Miles", "Bridgewater, Zakiya", "Camp, Vanessa", "Cauzza, Ellie", "Daniels, Owen", "Duenas, Wesley", "Froehlich, Dakota", "Halstead, Nadia", "Hammond, Harper", "Imig, Addison", "Jennings, James", "Johnson, Johnny", "Karloff, Quinn", "Lee, Kate", "Lee, Olivia", "Meiers, Troy", "Minton, Harper", "Sherman, Luke", "Van Abel, Reagan", "Watts, Bridger", "Weber, Leila", "Wilks, Alura", "Wright, Amelia"],
         [4, "Abusway, Malek", "Albrecht, Silas", "Bolton, Lucas", "Detro, Eliza", "Ford, Sienna", "Fronapfel, Andrew", "Hooks, Jentri", "Hynson, Delaney", "Jackson, Elias", "Jackson, Jameson", "Jiang, Melody", "Keeney, Jordyn", "Landrigan, Lincoln", "Linehan, Declan", "Makengo Ndaya, Shiloh", "Martinez, Madelynn", "Natividad, Oryon", "Nunez Soto Martinez, Romeo", "Runyon, Katherine", "Scaff, Braden", "Seibert, Cameron", "Simao, Eli", "Starinieri, Angelo", "Stoller, Elliana", "Zielaskowski, Hannah"],
-        [5, "Allen, Ainsley", "Beller, Lucy", "Brown, Elijah", "Brown, Wyatt", "Donnelly, Nathan", "Fisher, Connor", "Haber, Camilla", "Hackmeyer, Charlotte", "Houseman, Dylan", "Huber, Raylan", "Jones, Owen", "Lilly, Joshua", "Loiseau, Katherine", "McClanahan, Eric", "McConnell, Mallory", "Nickelson, Aleksander", "Ott, Aspen", "Patrick, Ciaran", "Pineda Alas, Eduardo", "Ramirez, Evan", "Ray Saelee, Amelia", "Rios Law, Deysi", "Roberts, Justin", "Thompson, Lucas", "Turmel, Ella", "Uffens, Eli", "Ward, Grady"],
+        [5, "Allen, Ainsley", "Beller, Lucy", "Brown, Elijah", "Brown, Wyatt", "Donnelly, Nathan", "Fisher, Connor", "Haber, Camilla", "Hackmeyer, Charlotte", "Houseman, Dylan", "Huber, Raylan", "Jones, Owen", "Lilly, Joshua", "Loiseau, Katherine", "McClanahan, Eric", "McConnell, Mallory", "Nickelson, Aleksander", "Ott, Aspen", "Patrick, Ciaran", "Pineda Alas, Eduardo", "Ramirez, Evan", "Ray Saelee, Amelia", "Rios Law, Deysi", "Roberts, Justin", "Thompson, Lucas", "Turmel, Ella", "Uffens, Eli", "Ward, Grady", "Wilson, Sienna"],
         [6, "Wilson, Sienna", "Abubakar, Awal", "Allen, Elizabeth", "Carew, Patrick", "Carrola Canizales, Nicole", "Casey, Miles", "Chapman, Raiden", "Cohrs, Travis", "Collins, Hunter", "Dahlberg, Luna", "Dillman, Rowan", "Duran, Taylor", "Franco, Eevan", "Gavin, Conor", "Harrison, Charles", "Hillier, Hallie", "Knight, Owen", "Licona, Ariella", "Long, Addison", "Matson, Warren", "Michaud, Harper", "Montano, Journey", "Schrader, Tristan", "Scott, Shiva", "Silva, Carter", "Simonov, Elijah", "Snyders, Mason", "Wilson, Hope"]
       ],
       Jensen: [
@@ -419,10 +419,10 @@
 
     function renderRoster() {
       const tbody = document.getElementById("rosterTableBody");
-      const search = document.getElementById("searchRoster").value.toLowerCase();
+      const searchInput = document.getElementById("searchRoster");
+      const search = searchInput ? searchInput.value.toLowerCase().trim() : "";
       const filterVal = document.getElementById("periodFilter").value;
 
-      // Formatting safeguard for teacher key matching
       const formattedTeacher = currentTeacher.charAt(0).toUpperCase() + currentTeacher.slice(1).toLowerCase();
       let roster = MASTER_ROSTER[formattedTeacher] || MASTER_ROSTER["Williams"] || [];
 
@@ -439,12 +439,17 @@
         roster = roster.filter(s => Number(s.period) === Number(selectedPeriod));
       }
 
+      // Robust search logic matching "First Last" or "Last, First"
       if (search) {
-        roster = roster.filter(s => s.name.toLowerCase().includes(search));
+        roster = roster.filter(s => {
+          const rawName = s.name.toLowerCase();
+          const cleanName = rawName.replace(',', '');
+          return rawName.includes(search) || cleanName.includes(search);
+        });
       }
 
       if (roster.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400 italic">No students found for Period ${selectedPeriod}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400 italic">No students found ${search ? `matching "${search}"` : `for Period ${selectedPeriod}`}.</td></tr>`;
         return;
       }
 
@@ -459,9 +464,9 @@
           if (b.studentB === s.name && activeOutNames.includes(b.studentA)) blockedBy = b.studentA;
         });
 
-        const passCountKey = `${formattedTeacher}_${s.name}`;
+        const passKey = `${formattedTeacher}_${s.name}`;
         const basePasses = 5;
-        const currentPasses = (liveData.adjustments || {})[passCountKey] !== undefined ? liveData.adjustments[passKey] : basePasses;
+        const currentPasses = (liveData.adjustments || {})[passKey] !== undefined ? liveData.adjustments[passKey] : basePasses;
 
         return `
           <tr class="hover:bg-slate-50">
