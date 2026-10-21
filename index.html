@@ -104,10 +104,6 @@
             </div>
 
             <div class="flex items-center gap-2 flex-wrap">
-              <button id="resetAdjustmentsBtn" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-2 rounded-lg border border-rose-200 transition" title="Clear old database counts to reset everyone to 5 passes per class">
-                🔄 Reset Counts
-              </button>
-
               <select id="periodFilter" class="text-sm font-semibold p-2 border rounded-lg bg-slate-50 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 <option value="all" selected>Show All Periods</option>
                 <option value="auto">Auto-Sync with Clock</option>
@@ -204,17 +200,35 @@
 
     let liveData = { passes: {}, blocks: {}, adjustments: {}, history: {} };
 
-    // SAFE-SYNC LISTENER: Prevents mid-day resets by ignoring empty/null payloads
+    // SAFE-SYNC LISTENER WITH AUTOMATIC DATA MIGRATION
     onValue(stateRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
+        let rawAdjustments = data.adjustments || {};
+        let cleanedAdjustments = {};
+        let needsSave = false;
+
+        // Automatically clean out legacy keys that didn't follow P[Period]_[StudentName]
+        Object.keys(rawAdjustments).forEach(key => {
+          if (/^P[1-6]_/.test(key)) {
+            cleanedAdjustments[key] = rawAdjustments[key];
+          } else {
+            needsSave = true; // Flag that legacy keys were detected and removed
+          }
+        });
+
         liveData = {
           passes: data.passes || liveData.passes || {},
           blocks: data.blocks || liveData.blocks || {},
-          adjustments: data.adjustments || liveData.adjustments || {},
+          adjustments: cleanedAdjustments,
           history: data.history || liveData.history || {}
         };
-        renderUI();
+
+        if (needsSave) {
+          saveToCloud(); // Save back cleaned state silently
+        } else {
+          renderUI();
+        }
       }
     });
 
@@ -460,7 +474,7 @@
       const activeOutNames = activePassesList.map(p => p.student);
 
       tbody.innerHTML = roster.map(s => {
-        // EXACT match: Student Name AND Period
+        // Match both student name AND period
         const isOut = activePassesList.some(p => p.student === s.name && Number(p.period) === Number(s.period));
         
         let blockedBy = null;
@@ -469,8 +483,8 @@
           if (b.studentB === s.name && activeOutNames.includes(b.studentA)) blockedBy = b.studentA;
         });
 
-        // FORCE UNIQUE KEY WITH PERIOD NUMBER
-        const passKey = `${formattedTeacher}_P${s.period}_${s.name}`;
+        // Pass bank key: P[Period]_[StudentName]
+        const passKey = `P${s.period}_${s.name}`;
         const basePasses = 5;
         const currentPasses = (liveData.adjustments || {})[passKey] !== undefined ? liveData.adjustments[passKey] : basePasses;
 
@@ -555,14 +569,6 @@
     document.getElementById("periodFilter").addEventListener("change", renderRoster);
     document.getElementById("searchRoster").addEventListener("input", renderRoster);
 
-    // RESET COUNTS BUTTON HANDLER (Clears old shared database records)
-    document.getElementById("resetAdjustmentsBtn").addEventListener("click", () => {
-      if (confirm("Reset all remaining pass counts back to 5 for all periods?")) {
-        liveData.adjustments = {};
-        saveToCloud();
-      }
-    });
-
     document.getElementById("addBlockForm").addEventListener("submit", (e) => {
       e.preventDefault();
       const sA = document.getElementById("blockStudentA").value.trim();
@@ -623,11 +629,11 @@
 
       const action = btn.dataset.action;
       const studentName = btn.dataset.student;
-      const period = Number(btn.dataset.period); // Explicit period number
+      const period = Number(btn.dataset.period);
       const formattedTeacher = currentTeacher.charAt(0).toUpperCase() + currentTeacher.slice(1).toLowerCase();
       
-      // STRICT UNIQUE KEY: TEACHER + PERIOD + STUDENT
-      const passKey = `${formattedTeacher}_P${period}_${studentName}`;
+      // Period-based key: P[Period]_[StudentName]
+      const passKey = `P${period}_${studentName}`;
 
       if (action === "sign-out") {
         const currentPasses = (liveData.adjustments || {})[passKey] !== undefined ? liveData.adjustments[passKey] : 5;
@@ -640,7 +646,6 @@
         const passId = "pass_" + Date.now();
         if (!liveData.passes) liveData.passes = {};
         
-        // SAVE PERIOD TO FIREBASE
         liveData.passes[passId] = {
           student: studentName,
           teacher: formattedTeacher,
